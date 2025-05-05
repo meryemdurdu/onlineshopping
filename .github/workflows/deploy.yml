@@ -1,0 +1,46 @@
+name: CI/CD Pipeline for Gradle + Docker + Cloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Grant execute permission for Gradle wrapper
+      run: chmod +x ./gradlew
+
+    - name: Build JAR with Gradle
+      run: ./gradlew clean build
+
+    - name: Build Docker image
+      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/myapp:latest .
+
+    - name: Login to DockerHub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Push Docker image to DockerHub
+      run: docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
+
+    - name: Upload JAR to Cloud Server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.CLOUD_HOST }}
+        username: ${{ secrets.CLOUD_USER }}
+        password: ${{ secrets.CLOUD_PASS }}
+        port: 22
+        source: "build/libs/*.jar"
+        target: "/home/${{ secrets.CLOUD_USER }}/apps"

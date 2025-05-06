@@ -35,12 +35,18 @@ jobs:
     - name: Push Docker image to DockerHub
       run: docker push ${{ secrets.DOCKER_USERNAME }}/myapp:latest
 
-    - name: Upload JAR to Cloud Server
+    - name: Decode SSH private key
+      run: echo "${{ secrets.CLOUD_KEY }}" | base64 -d > key.pem
+
+    - name: Set permissions for SSH key
+      run: chmod 600 key.pem
+
+    - name: Upload JAR to Cloud Server using SSH key
       uses: appleboy/scp-action@v0.1.4
       with:
         host: ${{ secrets.CLOUD_HOST }}
         username: ${{ secrets.CLOUD_USER }}
-        password: ${{ secrets.CLOUD_PASS }}
+        key: key.pem
         port: 22
         source: "build/libs/*.jar"
         target: "/home/${{ secrets.CLOUD_USER }}/apps"
